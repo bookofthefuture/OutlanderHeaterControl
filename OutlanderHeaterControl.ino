@@ -1,12 +1,6 @@
-/* 
- *  1. delete display components
- *  2. output information on canbus
- *  3. check for contactors closed by looking for dc-dc active
-  */
-
-#include <mcp_can.h>
+#include <mcp_can.h> // https://github.com/coryjfowler/MCP_CAN_lib
 #include <SPI.h>
-#include <TaskScheduler.h>
+#include <TaskScheduler.h> // https://github.com/arkhipenko/TaskScheduler
 #include <Wire.h>
 
 #define INVERTPOT true
@@ -16,6 +10,7 @@ unsigned long inverterLastRec;
 byte inverterStatus;
 #endif
 unsigned long temperatureLastRec;
+long unsigned int rxId;
 
 #define MAXTEMP 85
 #define MINTEMP 40
@@ -29,6 +24,7 @@ const int potPin = A0;
 const int ledPin = 3;
 const int pumpRelay = 5;
 const int powerSwitch = 6;
+const char caninfoID = 0x300;
 
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN); 
@@ -50,7 +46,7 @@ void setup() {
     pinMode(ledPin, OUTPUT);
     pinMode(pumpRelay, OUTPUT);
     pinMode(powerSwitch, INPUT);
-    while (CAN_OK != CAN.begin(CAN_500KBPS, MCP_8MHz))              // init can bus : baudrate = 500k
+    while (CAN_OK != CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ))              // init can bus : baudrate = 500k
     {
         Serial.println("CAN bus init fail");
         Serial.println(" Init CAN bus interface again");
@@ -81,10 +77,9 @@ void loop() {
   runner.execute();
   if(CAN_MSGAVAIL == CAN.checkReceive())            // check if data coming
   {
-        CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf
+        CAN.readMsgBuf(&rxId, &len, buf);    // read data,  len: data length, buf: data buf
 
-        unsigned int canId = CAN.getCanId();
-        if (canId == 0x398) {
+        if (rxId == 0x398) {
           //Heater status
           if (buf[5] == 0x00) {
             heating = false;
@@ -110,7 +105,7 @@ void loop() {
           temperatureLastRec = millis();
         }
         #ifdef OPENINVERTERCONTACTORS        
-        if (canId == 0x377) {
+        if (rxId == 0x377) {
           inverterLastRec = millis();
           inverterStatus = buf[7];
         }
@@ -222,4 +217,27 @@ void ms1000Task() {
   Serial.print(inverterStatus);
   Serial.println("");
   Serial.println("");
+
+  //send information on canbus via caninfoID
+
+  unsigned char templsb = (unsigned)currentTemperature & 0xff; // mask the lower 8 bits
+  unsigned char tempmsb = (unsigned)currentTemperature >> 8;   // shift the higher 8 bits
+  int temprec = (int)(((unsigned)tempmsb << 8) | templsb ); //test reconstruction - note doesn't handle negative numbers
+
+  unsigned char targetlsb = (unsigned)targetTemperature & 0xff; // mask the lower 8 bits
+  unsigned char targetmsb = (unsigned)targetTemperature >> 8;   // shift the higher 8 bits
+  int targetrec = (int)(((unsigned)targetmsb << 8) | targetlsb ); //test reconstruction - note doesn't handle negative numbers
+
+   uint8_t canData[8];
+   canData[0] = hvPresent; // HV Present
+   canData[1] = enabled; // Heater enabled
+   canData[2] = heating; // Heater active
+   canData[3] = templsb; // Water Temp low bit
+   canData[4] = tempmsb; // Water temp high bit
+   canData[5] = targetlsb; // Target temp low bit
+   canData[6] = targetmsb; // Target temp high bit
+   canData[7] = 0x00; // Not used
+
+   CAN.sendMsgBuf(caninfoID, 0, sizeof(canData), canData);
+  
 }
