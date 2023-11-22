@@ -1,14 +1,20 @@
+/* Arduino & MCP2515 canbus controller for Outlander heater. Forked from original by @JamieJones85. Updated for latest version of MCP_CAN library and changed to send data via canbus rather than to display
+// This version checks for HV by looking for DC-DC enable. Change this to suit your installation
+// Note: SPI pins for Arduino Pro Mini: 
+// SS: 10
+// MOSI: 11
+// MISO: 12
+// SCK: 13
+*/
+
 #include <mcp_can.h> // https://github.com/coryjfowler/MCP_CAN_lib
 #include <SPI.h>
 #include <TaskScheduler.h> // https://github.com/arkhipenko/TaskScheduler
 #include <Wire.h>
 
 #define INVERTPOT true
-#define OPENINVERTERCONTACTORS //uncomment to check can bus for Open Inverter opmode for contactors, prevents heating over precharge resistor
-#ifdef OPENINVERTERCONTACTORS
-unsigned long inverterLastRec;
-byte inverterStatus;
-#endif
+unsigned long hvLastRec;
+byte hvStatus;
 unsigned long temperatureLastRec;
 long unsigned int rxId;
 
@@ -104,12 +110,11 @@ void loop() {
           }
           temperatureLastRec = millis();
         }
-        #ifdef OPENINVERTERCONTACTORS        
         if (rxId == 0x377) {
-          inverterLastRec = millis();
-          inverterStatus = buf[7];
+          hvLastRec = millis();
+          hvStatus = buf[7];
         }
-        #endif
+
 
     }
 }
@@ -160,15 +165,12 @@ void ms100Task() {
       targetTemperature = map(sensorValue, 100, 1023, MINTEMP, MAXTEMP);
   }
 
-    //send 0x188
-#ifdef OPENINVERTERCONTACTORS
-  bool contactorsClosed = inverterStatus == 0x22;
-  if (!contactorsClosed) {
-    enabled = false;
+  bool contactorsClosed = hvStatus == 0x22;
+  if (contactorsClosed) {
+    enabled = true;
+  } else {
+    bool contactorsClosed = false;
   }
-  #else
-  bool contactorsClosed = true;
-  #endif
 
   digitalWrite(ledPin, enabled);   
 
@@ -213,8 +215,6 @@ void ms1000Task() {
   Serial.print(enabled);
   Serial.print(" Desired Water Temperature: ");
   Serial.print(targetTemperature);
-  Serial.print(" Inverter: ");
-  Serial.print(inverterStatus);
   Serial.println("");
   Serial.println("");
 
