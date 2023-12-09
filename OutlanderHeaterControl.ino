@@ -1,11 +1,17 @@
 /* Arduino & MCP2515 canbus controller for Outlander heater. Forked from original by @JamieJones85. Updated for latest version of MCP_CAN library and changed to send data via canbus rather than to display
 // This version checks for HV by looking for DC-DC enable. Change this to suit your installation
 // Note: SPI pins for Arduino Pro Mini: 
-// SS: 10
+// CS/SS: 10
 // MOSI: 11
 // MISO: 12
 // SCK: 13
-*/
+//
+// Other I/O:
+// Pot: A0
+// LED: 3
+// Pump Relay: 5
+// Power Switch: 6
+*/ 
 
 #include <mcp_can.h> // https://github.com/coryjfowler/MCP_CAN_lib
 #include <SPI.h>
