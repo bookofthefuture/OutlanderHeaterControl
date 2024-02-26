@@ -6,11 +6,12 @@
 // MISO: 12
 // SCK: 13
 //
-// Other I/O:
-// Pot: A0
+
+  // Other I/O:
+// Pot: A0 Green
 // LED: 3
-// Pump Relay: 5
-// Power Switch: 6
+// Pump Relay: 5 Grey internal | White External
+// Power Switch: 6` Purple
 */ 
 
 #include <mcp_can.h> // https://github.com/coryjfowler/MCP_CAN_lib
@@ -36,7 +37,7 @@ const int potPin = A0;
 const int ledPin = 3;
 const int pumpRelay = 5;
 const int powerSwitch = 6;
-const char caninfoID = 0x300;
+//const char caninfoID = 0x300;
 
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN); 
@@ -224,6 +225,7 @@ void ms1000Task() {
   Serial.println("");
   Serial.println("");
 
+/*
   //send information on canbus via caninfoID
 
   unsigned char templsb = (unsigned)currentTemperature & 0xff; // mask the lower 8 bits
@@ -245,5 +247,5 @@ void ms1000Task() {
    canData[7] = 0x00; // Not used
 
    CAN.sendMsgBuf(caninfoID, 0, sizeof(canData), canData);
-  
+  */
 }
