@@ -1,17 +1,17 @@
-/* Arduino & MCP2515 canbus controller for Outlander heater. Forked from original by @JamieJones85. Updated for latest version of MCP_CAN library and changed to send data via canbus rather than to display
-// This version checks for HV by looking for DC-DC enable. Change this to suit your installation
-// Note: SPI pins for Arduino Pro Mini: 
-// CS/SS: 10
-// MOSI: 11
-// MISO: 12
-// SCK: 13
-//
-
-  // Other I/O:
-// Pot: A0 Green
-// LED: 3
-// Pump Relay: 5 Grey internal | White External
-// Power Switch: 6` Purple
+/* Arduino & MCP2515 canbus controller for Outlander heater. Forked from original by @JamieJones85. 
+ * Updated for latest version of MCP_CAN library and changed to send data via canbus rather than to display
+ * This version checks for HV by looking for DC-DC enable. Change this to suit your installation
+ * Note: SPI pins for Arduino Pro Mini: 
+ * CS/SS: 10
+ * MOSI: 11
+ * MISO: 12
+ * SCK: 13
+ *
+ * Other I/O:
+ * Pot: A0 Green 
+ * LED: 3
+ * Pump Relay: 5 Grey internal | White External
+ * Power Switch: 6` Purple
 */ 
 
 #include <mcp_can.h> // https://github.com/coryjfowler/MCP_CAN_lib
@@ -53,35 +53,32 @@ Task ms1000(1000, -1, &ms1000Task);
 Scheduler runner;
 
 void setup() {
-    Serial.begin(115200);
-    Serial.println("Outlander Heater Control");
+  Serial.begin(115200);
+  Serial.println("Outlander Heater Control");
 
-    pinMode(ledPin, OUTPUT);
-    pinMode(pumpRelay, OUTPUT);
-    pinMode(powerSwitch, INPUT);
-    while (CAN_OK != CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ))              // init can bus : baudrate = 500k
+  pinMode(ledPin, OUTPUT);
+  pinMode(pumpRelay, OUTPUT);
+  pinMode(powerSwitch, INPUT);
+  while (CAN_OK != CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ))              // init can bus : baudrate = 500k
     {
-        Serial.println("CAN bus init fail");
-        Serial.println(" Init CAN bus interface again");
-        delay(100);
+      Serial.println("CAN bus init fail");
+      Serial.println(" Init CAN bus interface again");
+      delay(100);
     }
+  Serial.println("CAN BUS Shield init ok!");
+  CAN.setMode(MCP_NORMAL);   // Change to normal mode to allow messages to be transmitted
+ 
+  runner.init();
+  
+  runner.addTask(ms10);
+  ms10.enable();
 
-    Serial.println("CAN BUS Shield init ok!");
+  runner.addTask(ms100);
+  ms100.enable();
 
-    runner.init();
-
-    runner.addTask(ms10);
-    ms10.enable();
-
-    runner.addTask(ms100);
-    ms100.enable();
-
-    runner.addTask(ms1000);
-    ms1000.enable();
-
+  runner.addTask(ms1000);
+  ms1000.enable();
 }
-
-
 
 void loop() {
   unsigned char len = 0;
