@@ -28,7 +28,7 @@ unsigned long temperatureLastRec;
 long unsigned int rxId;
 
 #define MAXTEMP 80
-#define MINTEMP 15
+#define MINTEMP 30
 unsigned int targetTemperature = 0;
 bool enabled = false;
 bool hvPresent = false;
