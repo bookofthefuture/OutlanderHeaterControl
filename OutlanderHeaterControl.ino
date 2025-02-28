@@ -19,14 +19,16 @@
 #include <TaskScheduler.h> // https://github.com/arkhipenko/TaskScheduler
 #include <Wire.h>
 
+//#define DEBUG
+
 #define INVERTPOT true
 unsigned long hvLastRec;
 byte hvStatus;
 unsigned long temperatureLastRec;
 long unsigned int rxId;
 
-#define MAXTEMP 85
-#define MINTEMP 40
+#define MAXTEMP 80
+#define MINTEMP 15
 unsigned int targetTemperature = 0;
 bool enabled = false;
 bool hvPresent = false;
@@ -53,19 +55,24 @@ Task ms1000(1000, -1, &ms1000Task);
 Scheduler runner;
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Outlander Heater Control");
-
+  #ifdef DEBUG
+    Serial.begin(115200);
+   Serial.println("Outlander Heater Control");
+  #endif
   pinMode(ledPin, OUTPUT);
   pinMode(pumpRelay, OUTPUT);
-  pinMode(powerSwitch, INPUT);
+  pinMode(powerSwitch, INPUT_PULLUP);
   while (CAN_OK != CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ))              // init can bus : baudrate = 500k
     {
-      Serial.println("CAN bus init fail");
-      Serial.println(" Init CAN bus interface again");
+      #ifdef DEBUG
+        Serial.println("CAN bus init fail");
+        Serial.println(" Init CAN bus interface again");
+      #endif
       delay(100);
     }
-  Serial.println("CAN BUS Shield init ok!");
+  #ifdef DEBUG
+    Serial.println("CAN BUS Shield init ok!");
+  #endif
   CAN.setMode(MCP_NORMAL);   // Change to normal mode to allow messages to be transmitted
  
   runner.init();
@@ -118,19 +125,21 @@ void loop() {
           hvLastRec = millis();
           hvStatus = buf[7];
         }
-
-
     }
 }
 
 void pumpOn() {
   digitalWrite(pumpRelay, HIGH);
-  Serial.println("Pump on");
+  #ifdef DEBUG
+    Serial.println("Pump on");
+  #endif
 }
 
 void pumpOff() {
   digitalWrite(pumpRelay, LOW);
-  Serial.println("Pump on");
+  #ifdef DEBUG
+    Serial.println("Pump on");
+  #endif
 }
 
 void ms10Task() {
@@ -150,17 +159,14 @@ void ms10Task() {
 
 void ms100Task() {
   int sensorValue = analogRead(potPin);
-
-  if (powerSwitch == 1) {
-      enabled = true;
-    } else {
-      enabled = false;
-    }
+  int powerValue = digitalRead(powerSwitch);
  
   //if heater is not sending feedback, disable it, safety and that
   if (millis() - temperatureLastRec > 1000) {
     enabled = false;
-    Serial.println("No Temperature received");
+    #ifdef DEBUG
+      Serial.println("No Temperature received");
+    #endif
   }
 
   if (INVERTPOT) {
@@ -170,7 +176,7 @@ void ms100Task() {
   }
 
   bool contactorsClosed = hvStatus == 0x22;
-  if (contactorsClosed) {
+  if (contactorsClosed && powerValue == 0) {
     enabled = true;
   } else {
     bool contactorsClosed = false;
@@ -205,23 +211,26 @@ void ms100Task() {
 }
 
 void ms1000Task() {
-  Serial.println("Heater Status");
-  Serial.print("HV Present: ");
-  Serial.print(hvPresent);
-  Serial.print(" Heater Active: ");
-  Serial.print(heating);
-  Serial.print(" Water Temperature: ");
-  Serial.print(currentTemperature);
-  Serial.println("C");
-  Serial.println("");
-  Serial.println("Settings");
-  Serial.print(" Heating: ");
-  Serial.print(enabled);
-  Serial.print(" Desired Water Temperature: ");
-  Serial.print(targetTemperature);
-  Serial.println("");
-  Serial.println("");
-
+  #ifdef DEBUG
+    Serial.print("Enabled: ");
+    Serial.println(enabled);
+    Serial.println("Heater Status");
+    Serial.print("HV Present: ");
+    Serial.print(hvPresent);
+    Serial.print(" Heater Active: ");
+    Serial.print(heating);
+    Serial.print(" Water Temperature: ");
+    Serial.print(currentTemperature);
+    Serial.println("C");
+    Serial.println("");
+    Serial.println("Settings");
+    Serial.print(" Heating: ");
+    Serial.print(enabled);
+    Serial.print(" Desired Water Temperature: ");
+    Serial.print(targetTemperature);
+    Serial.println("");
+    Serial.println("");
+  #endif
 /*
   //send information on canbus via caninfoID
 
