@@ -19,7 +19,7 @@
 #include <TaskScheduler.h> // https://github.com/arkhipenko/TaskScheduler
 #include <Wire.h>
 
-//#define DEBUG
+#define DEBUG
 
 #define INVERTPOT true
 unsigned long hvLastRec;
@@ -39,7 +39,6 @@ const int potPin = A0;
 const int ledPin = 3;
 const int pumpRelay = 5;
 const int powerSwitch = 6;
-//const char caninfoID = 0x300;
 
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN); 
@@ -185,29 +184,27 @@ void ms100Task() {
   digitalWrite(ledPin, enabled);   
 
   if (contactorsClosed && enabled && currentTemperature < targetTemperature) {
-   uint8_t canData[8];
-   canData[0] = 0x03;
-   canData[1] = 0x50;
-   canData[3] = 0x4D;
-   canData[4] = 0x00;
-   canData[5] = 0x00;
-   canData[6] = 0x00;
-   canData[7] = 0x00;
+    uint8_t canData[8];
+    canData[0] = 0x03;
+    canData[1] = 0x50;
+    canData[3] = 0x4D;
+    canData[4] = 0x00;
+    canData[5] = 0x00;
+    canData[6] = 0x00;
+    canData[7] = 0x00;
 
-   //switch to lower power when reaching target temperature
-   if (currentTemperature < targetTemperature - 10) {
-    canData[2] = 0xA2;
-    power = 2;
-   } else {
-    canData[2] = 0x32;
-    power = 1;
-   }
-   
+    //switch to lower power when reaching target temperature
+    if (currentTemperature < targetTemperature - 10) {
+      canData[2] = 0xA2;
+      power = 2;
+    } else {
+      canData[2] = 0x32;
+      power = 1;
+    }   
     CAN.sendMsgBuf(0x188, 0, sizeof(canData), canData);
   } else {
     power = 0;
   }
-
 }
 
 void ms1000Task() {
@@ -231,27 +228,18 @@ void ms1000Task() {
     Serial.println("");
     Serial.println("");
   #endif
-/*
+
   //send information on canbus via caninfoID
-
-  unsigned char templsb = (unsigned)currentTemperature & 0xff; // mask the lower 8 bits
-  unsigned char tempmsb = (unsigned)currentTemperature >> 8;   // shift the higher 8 bits
-  int temprec = (int)(((unsigned)tempmsb << 8) | templsb ); //test reconstruction - note doesn't handle negative numbers
-
-  unsigned char targetlsb = (unsigned)targetTemperature & 0xff; // mask the lower 8 bits
-  unsigned char targetmsb = (unsigned)targetTemperature >> 8;   // shift the higher 8 bits
-  int targetrec = (int)(((unsigned)targetmsb << 8) | targetlsb ); //test reconstruction - note doesn't handle negative numbers
 
    uint8_t canData[8];
    canData[0] = hvPresent; // HV Present
    canData[1] = enabled; // Heater enabled
    canData[2] = heating; // Heater active
-   canData[3] = templsb; // Water Temp low bit
-   canData[4] = tempmsb; // Water temp high bit
-   canData[5] = targetlsb; // Target temp low bit
-   canData[6] = targetmsb; // Target temp high bit
+   canData[3] = currentTemperature; // Water Temp low bit
+   canData[4] = targetTemperature; // Water temp high bit
+   canData[5] = 0x00; // Not used
+   canData[6] = 0x00; // Not used
    canData[7] = 0x00; // Not used
 
-   CAN.sendMsgBuf(caninfoID, 0, sizeof(canData), canData);
-  */
+   CAN.sendMsgBuf(0x300, 0, sizeof(canData), canData);
 }
