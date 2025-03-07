@@ -40,6 +40,8 @@ const int ledPin = 3;
 const int pumpRelay = 5;
 const int powerSwitch = 6;
 
+int heartbeat = 0;
+
 const int SPI_CS_PIN = 10;
 MCP_CAN CAN(SPI_CS_PIN); 
 
@@ -76,8 +78,8 @@ void setup() {
  
   runner.init();
   
-//  runner.addTask(ms10);
-//  ms10.enable();
+  runner.addTask(ms10);
+  ms10.enable();
 
   runner.addTask(ms100);
   ms100.enable();
@@ -124,6 +126,13 @@ void loop() {
           hvLastRec = millis();
           hvStatus = buf[7];
         }
+        if (rxId == 0x285) {
+          if (buf[2] == 0xB6) {
+            heartbeat = 1;
+          } else {
+          heartbeat = 0;
+          }
+        }
     }
 }
 
@@ -142,6 +151,7 @@ void pumpOff() {
 }
 
 void ms10Task() {
+  if (heartbeat == 0) {
   //send 0x285
    uint8_t canData[8];
    canData[0] = 0x00;
@@ -154,6 +164,7 @@ void ms10Task() {
    canData[7] = 0x10;
 
    CAN.sendMsgBuf(0x285, 0, sizeof(canData), canData);
+  }
 }
 
 void ms100Task() {
@@ -175,7 +186,7 @@ void ms100Task() {
   }
 
   bool contactorsClosed = hvStatus == 0x22;
-  if (contactorsClosed && powerValue == 0) {
+  if (contactorsClosed && powerValue == 1) {
     enabled = true;
   } else {
     bool contactorsClosed = false;
