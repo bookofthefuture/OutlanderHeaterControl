@@ -170,7 +170,7 @@ void ms10Task() {
 void ms100Task() {
   int sensorValue = analogRead(potPin);
   int powerValue = digitalRead(powerSwitch);
- 
+
   //if heater is not sending feedback, disable it, safety and that
   if (millis() - temperatureLastRec > 1000) {
     enabled = false;
@@ -186,9 +186,10 @@ void ms100Task() {
   }
 
   bool contactorsClosed = hvStatus == 0x22;
-  if (contactorsClosed && powerValue == 1) {
+  if (contactorsClosed && powerValue == 0) {
     enabled = true;
   } else {
+    enabled = false;
     bool contactorsClosed = false;
   }
 
