@@ -8,7 +8,7 @@ controller talking to the heater directly. On CAN ID 509 (0x1FD), this controlle
 
 Zombieverter's CAN input map needs to be configured to match this layout.
 
-Status telemetry (HV present, heater active, water temperature) is still read from the heater/BMS over CAN and
-rebroadcast on CAN ID 0x300 for the ev-gauge display.
+This is now the only CAN message this controller sends - it no longer generates a BMS heartbeat (0x285) or
+rebroadcasts heater/HV status telemetry (0x300).
 
 See https://openinverter.org/wiki/Mitsubishi_Outlander_Water_Heater
