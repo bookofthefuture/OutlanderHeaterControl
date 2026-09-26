@@ -1,7 +1,10 @@
-/* Arduino & MCP2515 canbus controller for Outlander heater. Forked from original by @JamieJones85. 
+/* Arduino & MCP2515 canbus controller for Outlander heater. Forked from original by @JamieJones85.
  * Updated for latest version of MCP_CAN library and changed to send data via canbus rather than to display
- * This version checks for HV by looking for DC-DC enable. Change this to suit your installation
- * Note: SPI pins for Arduino Pro Mini: 
+ * Heater control itself is now done by Zombieverter: this controller just sends the pot's HeatReq
+ * switch state and value on CAN ID 509 (0x1FD) for Zombieverter to act on. HV/DC-DC status is still
+ * monitored and reported for telemetry, but no longer gates HeatReq - Zombieverter is trusted to
+ * apply its own HV/contactor safety check before enabling the heater.
+ * Note: SPI pins for Arduino Pro Mini:
  * CS/SS: 10
  * MOSI: 11
  * MISO: 12
@@ -27,13 +30,10 @@ byte hvStatus;
 unsigned long temperatureLastRec;
 long unsigned int rxId;
 
-#define MAXTEMP 80
-#define MINTEMP 30
-unsigned int targetTemperature = 0;
+#define ZOMBIE_HEATER_CAN_ID 509 // 0x1FD
 bool enabled = false;
 bool hvPresent = false;
 bool heating = false;
-int power = 20;
 int currentTemperature = 0;
 const int potPin = A0;
 const int ledPin = 3;
@@ -101,7 +101,6 @@ void loop() {
           //Heater status
           if (buf[5] == 0x00) {
             heating = false;
-            power = 0;
           } else if (buf[5] > 0) {
             heating = true;
           }
@@ -171,52 +170,24 @@ void ms100Task() {
   int sensorValue = analogRead(potPin);
   int powerValue = digitalRead(powerSwitch);
 
-  //if heater is not sending feedback, disable it, safety and that
-  if (millis() - temperatureLastRec > 1000) {
-    enabled = false;
-    #ifdef DEBUG
-      Serial.println("No Temperature received");
-    #endif
-  }
+  bool heatReq = (powerValue == 0);
+  enabled = heatReq;
 
+  digitalWrite(ledPin, enabled);
+
+  unsigned int potValue;
   if (INVERTPOT) {
-      targetTemperature = map(sensorValue, 1023, 100, MINTEMP, MAXTEMP);
+      potValue = map(sensorValue, 1023, 0, 0, 4095);
   } else {
-      targetTemperature = map(sensorValue, 100, 1023, MINTEMP, MAXTEMP);
+      potValue = map(sensorValue, 0, 1023, 0, 4095);
   }
 
-  bool contactorsClosed = hvStatus == 0x22;
-  if (contactorsClosed && powerValue == 0) {
-    enabled = true;
-  } else {
-    enabled = false;
-    bool contactorsClosed = false;
-  }
+  uint8_t canData[8] = {0};
+  canData[0] = heatReq ? 0x01 : 0x00;
+  canData[1] = potValue & 0xFF;
+  canData[2] = (potValue >> 8) & 0xFF;
 
-  digitalWrite(ledPin, enabled);   
-
-  if (contactorsClosed && enabled && currentTemperature < targetTemperature) {
-    uint8_t canData[8];
-    canData[0] = 0x03;
-    canData[1] = 0x50;
-    canData[3] = 0x4D;
-    canData[4] = 0x00;
-    canData[5] = 0x00;
-    canData[6] = 0x00;
-    canData[7] = 0x00;
-
-    //switch to lower power when reaching target temperature
-    if (currentTemperature < targetTemperature - 10) {
-      canData[2] = 0xA2;
-      power = 2;
-    } else {
-      canData[2] = 0x32;
-      power = 1;
-    }   
-    CAN.sendMsgBuf(0x188, 0, sizeof(canData), canData);
-  } else {
-    power = 0;
-  }
+  CAN.sendMsgBuf(ZOMBIE_HEATER_CAN_ID, 0, sizeof(canData), canData);
 }
 
 void ms1000Task() {
@@ -235,8 +206,6 @@ void ms1000Task() {
     Serial.println("Settings");
     Serial.print(" Heating: ");
     Serial.print(enabled);
-    Serial.print(" Desired Water Temperature: ");
-    Serial.print(targetTemperature);
     Serial.println("");
     Serial.println("");
   #endif
@@ -247,8 +216,8 @@ void ms1000Task() {
    canData[0] = hvPresent; // HV Present
    canData[1] = enabled; // Heater enabled
    canData[2] = heating; // Heater active
-   canData[3] = currentTemperature; // Water Temp low bit
-   canData[4] = targetTemperature; // Water temp high bit
+   canData[3] = currentTemperature; // Water Temp
+   canData[4] = 0x00; // Not used
    canData[5] = 0x00; // Not used
    canData[6] = 0x00; // Not used
    canData[7] = 0x00; // Not used
