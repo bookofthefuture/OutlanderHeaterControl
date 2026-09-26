@@ -107,9 +107,13 @@ void ms100Task() {
   canData[1] = potValue & 0xFF;
   canData[2] = (potValue >> 8) & 0xFF;
 
-  CAN.sendMsgBuf(ZOMBIE_HEATER_CAN_ID, 0, sizeof(canData), canData);
+  byte sendStatus = CAN.sendMsgBuf(ZOMBIE_HEATER_CAN_ID, 0, sizeof(canData), canData);
 
   #ifdef DEBUG
+    if (sendStatus != CAN_OK) {
+      Serial.print("CAN send failed, status: ");
+      Serial.println(sendStatus);
+    }
     Serial.print("HeatReq: ");
     Serial.print(heatReq);
     Serial.print(" Pot value: ");
