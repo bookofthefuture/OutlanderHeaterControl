@@ -1,0 +1,7 @@
+(version 1)
+
+# TCAN332 (U4) is SOT-23-8 at 0.65 mm pitch, leaving 0.15 mm between pads.
+# Allow that pad-to-pad only; everything else keeps the 0.2 mm default.
+(rule "TCAN332 (U4) fine-pitch pads"
+	(constraint clearance (min 0.15mm))
+	(condition "A.Type == 'Pad' && B.Type == 'Pad' && A.memberOfFootprint('U4') && B.memberOfFootprint('U4')"))

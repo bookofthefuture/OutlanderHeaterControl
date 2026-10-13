@@ -35,3 +35,8 @@
 .pio/
 .vscode/
 compile_commands.json
+
+# KiCad
+*-backups/
+*.lck
+fp-info-cache
